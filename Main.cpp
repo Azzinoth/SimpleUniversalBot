@@ -1,5 +1,6 @@
 #include <iostream>
 #include <Windows.h>
+//#include <Windows.h>
 #include <cassert> // assert
 
 /* forward declarations */
@@ -141,22 +142,253 @@ void CreateBMPFile(LPTSTR pszFile, HBITMAP hBMP)
 	GlobalFree((HGLOBAL)lpBits);
 }
 
-int main()
+// Global variables of screen resolution
+int screenW = 0;
+int screenH = 0;
+
+void InitScreenResolutionInfo()
 {
 	HWND hwnd;
-	HDC hdc[2];
-	HBITMAP hbitmap;
 	RECT rect;
 
 	hwnd = GetDesktopWindow();
 	GetClientRect(hwnd, &rect);
-	hdc[0] = GetWindowDC(hwnd);
 
 	// my windows 175 % scaling
 	rect.right *= 1.75;
+	screenW = rect.right;
 	rect.bottom *= 1.75;
+	screenH = rect.bottom;
+}
 
-	hbitmap = CreateCompatibleBitmap(hdc[0], rect.right, rect.bottom);
+int XcoordToNormalize(int x)
+{
+	return 65535 * (float(x) / float(screenW));
+}
+
+int YcoordToNormalize(int y)
+{
+	return 65535 * (float(y) / float(screenH));
+}
+
+void MouseMoveTo(int x, int y)
+{
+	// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-tagmouseinput
+	// Remarks
+
+	int tempX = 65535 * (float(x) / float(screenW));
+	int tempY = 65535 * (float(y) / float(screenH));
+
+	INPUT Inputs[1] = { 0 };
+
+	Inputs[0].type = INPUT_MOUSE;
+	Inputs[0].mi.dx = tempX; // desired X coordinate
+	Inputs[0].mi.dy = tempY; // desired Y coordinate
+	Inputs[0].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
+
+	SendInput(1, Inputs, sizeof(INPUT));
+}
+
+void MouseClick(int x, int y)
+{
+	// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-tagmouseinput
+	// Remarks
+
+	INPUT Inputs[3] = { 0 };
+
+	Inputs[0].type = INPUT_MOUSE;
+	Inputs[0].mi.dx = XcoordToNormalize(x); // desired X coordinate
+	Inputs[0].mi.dy = YcoordToNormalize(y); // desired Y coordinate
+	Inputs[0].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
+
+	Inputs[1].type = INPUT_MOUSE;
+	Inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+
+	Inputs[2].type = INPUT_MOUSE;
+	Inputs[2].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+	SendInput(3, Inputs, sizeof(INPUT));
+}
+
+void MouseDrag(int x, int y, int x1, int x2)
+{
+	// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-tagmouseinput
+	// Remarks
+
+	INPUT Inputs[4] = { 0 };
+
+	Inputs[0].type = INPUT_MOUSE;
+	Inputs[0].mi.dx = XcoordToNormalize(x); // desired X coordinate
+	Inputs[0].mi.dy = YcoordToNormalize(y); // desired Y coordinate
+	Inputs[0].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE; 
+
+	Inputs[1].type = INPUT_MOUSE;
+	Inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+
+	Inputs[2].type = INPUT_MOUSE;
+	Inputs[2].mi.dx = XcoordToNormalize(x1); // desired X coordinate
+	Inputs[2].mi.dy = YcoordToNormalize(x2); // desired Y coordinate
+	Inputs[2].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
+
+	Inputs[3].type = INPUT_MOUSE;
+	Inputs[3].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+	SendInput(4, Inputs, sizeof(INPUT));
+}
+
+void MouseDragt(int x, int y, int x2, int y2)
+{
+	// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-tagmouseinput
+	// Remarks
+
+	//int tempX = 65535 * (float(x) / float(screenW));
+	//int tempY = 65535 * (float(y) / float(screenH));
+
+	//int tempXE = 65535 * (float(x1) / float(screenW));
+	//int tempYE = 65535 * (float(x2) / float(screenH));
+
+	//SetCursorPos(x / 1.75, y / 1.75);
+	//mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); //clicks on canvas
+	//Sleep(30);                                      //puts small delay between next click
+	//mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);  // holds down left mouse button
+	//Sleep(300);
+	//SetCursorPos(x1 / 1.75, x2 / 1.75);
+	//mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);  //releases left mouse button
+
+	//return;
+
+	INPUT Inputs[1] = { 0 };
+	INPUT Inputs1[1] = { 0 };
+	INPUT Inputs2[1] = { 0 };
+	INPUT Inputs3[1] = { 0 };
+
+	Inputs[0].type = INPUT_MOUSE;
+	Inputs[0].mi.dx = XcoordToNormalize(x); // desired X coordinate
+	Inputs[0].mi.dy = YcoordToNormalize(y); // desired Y coordinate
+	Inputs[0].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
+
+	SendInput(1, Inputs, sizeof(INPUT));
+	Sleep(350);
+
+	Inputs1[0].type = INPUT_MOUSE;
+	Inputs1[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+
+	SendInput(1, Inputs1, sizeof(INPUT));
+	Sleep(350);
+
+	int difference = YcoordToNormalize(y2) - YcoordToNormalize(y);
+
+	for (int i = 1; i <= 10; i++)
+	{
+		Inputs1[0].type = INPUT_MOUSE;
+		Inputs1[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+		Sleep(20);
+
+		Inputs2[0].type = INPUT_MOUSE;
+		Inputs2[0].mi.dx = XcoordToNormalize(x2);
+		//Inputs2[0].mi.dy = YcoordToNormalize(y2) - i * 200;
+		int currentDiff = ((float(i) * 10.0 / 100.0) * difference);
+		Inputs2[0].mi.dy = YcoordToNormalize(y) + currentDiff;
+		Inputs2[0].mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
+
+		SendInput(1, Inputs2, sizeof(INPUT));
+		Sleep(20);
+		ZeroMemory(&Inputs2, sizeof(INPUT));
+	}
+
+	Sleep(550);
+	Inputs3[0].type = INPUT_MOUSE;
+	Inputs3[0].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+	SendInput(1, Inputs3, sizeof(INPUT));
+}
+
+void MouseWheel(int amountOfMovementUp)
+{
+	// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-tagmouseinput
+	// Remarks
+
+	INPUT Inputs[1] = { 0 };
+
+	Inputs[0].type = INPUT_MOUSE;
+	Inputs[0].mi.mouseData = amountOfMovementUp; // desired Y coordinate
+	Inputs[0].mi.dwFlags = MOUSEEVENTF_WHEEL;
+
+	SendInput(1, Inputs, sizeof(INPUT));
+}
+
+void ScrollBack()
+{
+	for (int i = 0; i < 15; i++)
+	{
+		MouseDragt(2030, 900, 2030, 1500);
+		Sleep(150);
+	}
+}
+
+int main()
+{
+	InitScreenResolutionInfo();
+
+	//ScrollBack();
+
+	int count = 200;
+	while (true)
+	{
+		//MouseMoveTo(2460, 1300);
+		//MouseWheel(-250);
+
+		for (int i = 0; i < 20; i++)
+		{
+			MouseClick(2200, 900);
+			Sleep(10);
+			for (int j = 0; j < 3; j++)
+			{
+				MouseClick(2000, 900);
+			}
+			Sleep(150);
+			///
+			MouseClick(2200, 1200);
+			Sleep(10);
+			for (int j = 0; j < 3; j++)
+			{
+				MouseClick(2000, 1200);
+			}
+			Sleep(150);
+			///
+			MouseClick(2200, 1500);
+			Sleep(10);
+			for (int j = 0; j < 3; j++)
+			{
+				MouseClick(2000, 1500);
+			}
+			Sleep(150);
+			///
+
+			MouseDragt(2030, 1500, 2030, 1170);
+			Sleep(250);
+		}
+
+		ScrollBack();
+
+		return 0;
+	}
+
+	for (int i = 0; i < 500; i++)
+	{
+		MouseClick(3600, 1400);
+	}
+
+	return 0;
+
+	HWND hwnd;
+	HDC hdc[2];
+	HBITMAP hbitmap;
+
+	hwnd = GetDesktopWindow();
+	hdc[0] = GetWindowDC(hwnd);
+
+	hbitmap = CreateCompatibleBitmap(hdc[0], screenW, screenH);
 	hdc[1] = CreateCompatibleDC(hdc[0]);
 	SelectObject(hdc[1], hbitmap);
 
@@ -164,8 +396,8 @@ int main()
 		hdc[1],
 		0,
 		0,
-		rect.right,
-		rect.bottom,
+		screenW,
+		screenH,
 		hdc[0],
 		0,
 		0,
