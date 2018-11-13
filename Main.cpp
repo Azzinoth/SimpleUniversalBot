@@ -326,11 +326,96 @@ void ScrollBack()
 	}
 }
 
+BYTE* ScreenData = 0;
+
+void ScreenCap()
+{
+	HDC hScreen = GetDC(GetDesktopWindow());
+	//ScreenX = GetDeviceCaps(hScreen, HORZRES);
+	//ScreenY = GetDeviceCaps(hScreen, VERTRES);
+
+	HDC hdcMem = CreateCompatibleDC(hScreen);
+	HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, screenW, screenH);
+	HGDIOBJ hOld = SelectObject(hdcMem, hBitmap);
+	BitBlt(hdcMem, 0, 0, screenW, screenW, hScreen, 0, 0, SRCCOPY);
+	SelectObject(hdcMem, hOld);
+
+	BITMAPINFOHEADER bmi = { 0 };
+	bmi.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.biPlanes = 1;
+	bmi.biBitCount = 32;
+	bmi.biWidth = screenW;
+	bmi.biHeight = -screenH;
+	bmi.biCompression = BI_RGB;
+	bmi.biSizeImage = 0;// 3 * ScreenX * ScreenY;
+
+	if (ScreenData)
+		free(ScreenData);
+	ScreenData = (BYTE*)malloc(4 * screenW * screenH);
+
+	GetDIBits(hdcMem, hBitmap, 0, screenH, ScreenData, (BITMAPINFO*)&bmi, DIB_RGB_COLORS);
+
+	ReleaseDC(GetDesktopWindow(), hScreen);
+	DeleteDC(hdcMem);
+	DeleteObject(hBitmap);
+}
+
+inline int PosB(int x, int y)
+{
+	return ScreenData[4 * ((y * screenW) + x)];
+}
+
+inline int PosG(int x, int y)
+{
+	return ScreenData[4 * ((y * screenW) + x) + 1];
+}
+
+inline int PosR(int x, int y)
+{
+	return ScreenData[4 * ((y * screenW) + x) + 2];
+}
+
+bool ButtonPress(int Key)
+{
+	bool button_pressed = false;
+
+	while (GetAsyncKeyState(Key))
+		button_pressed = true;
+
+	return button_pressed;
+}
+
 int main()
 {
 	InitScreenResolutionInfo();
 
 	//ScrollBack();
+
+	while (true)
+	{
+		if (ButtonPress(VK_SPACE))
+		{
+			// Print out current cursor position
+			POINT p;
+			GetCursorPos(&p);
+			p.x *= 1.75;
+			p.y *= 1.75;
+			printf("X:%d Y:%d \n", p.x, p.y);
+			// Print out RGB value at that position
+			std::cout << "Bitmap: r: " << PosR(p.x, p.y) << " g: " << PosG(p.x, p.y) << " b: " << PosB(p.x, p.y) << "\n";
+
+		}
+		else if (ButtonPress(VK_ESCAPE))
+		{
+			printf("Quit\n");
+			break;
+		}
+		else if (ButtonPress(VK_SHIFT))
+		{
+			ScreenCap();
+			printf("Captured\n");
+		}
+	}
 
 	int count = 200;
 	while (true)
