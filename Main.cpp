@@ -1,7 +1,17 @@
 #include <iostream>
 #include <Windows.h>
+#include <windowsx.h>
 //#include <Windows.h>
 #include <cassert> // assert
+#include "ImageDataClass.h"
+
+HWND main_hwnd;
+HDC g_hDC;
+static TCHAR szWindowClass[] = TEXT("win32app");
+static TCHAR szTitle[] = TEXT("SimpleUniversalBot");
+HINSTANCE hInst;
+
+HBITMAP tempImgToDraw = NULL;
 
 /* forward declarations */
 PBITMAPINFO CreateBitmapInfoStruct(HBITMAP);
@@ -326,13 +336,40 @@ void ScrollBack()
 	}
 }
 
-BYTE* ScreenData = 0;
+//BYTE* ScreenData = 0;
+ImageDataClass* ScreenData;
+
+void GetScreenDataRegion(ImageDataClass** data, int beginX, int beginY, int width, int length)
+{
+	HDC hScreen = GetDC(GetDesktopWindow());
+
+	HDC hdcMem = CreateCompatibleDC(hScreen);
+	HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, screenW, screenH);
+	HGDIOBJ hOld = SelectObject(hdcMem, hBitmap);
+	BitBlt(hdcMem, 0, 0, width, length, hScreen, beginX, beginY, SRCCOPY);
+	SelectObject(hdcMem, hOld);
+
+	BITMAPINFOHEADER bmi = { 0 };
+	bmi.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.biPlanes = 1;
+	bmi.biBitCount = 32;
+	bmi.biWidth = width;
+	bmi.biHeight = -length;
+	bmi.biCompression = BI_RGB;
+	bmi.biSizeImage = 0;
+
+	*data = new ImageDataClass(4, width, length);
+
+	GetDIBits(hdcMem, hBitmap, 0, length, (*data)->getData(), (BITMAPINFO*)&bmi, DIB_RGB_COLORS);
+
+	ReleaseDC(GetDesktopWindow(), hScreen);
+	DeleteDC(hdcMem);
+	DeleteObject(hBitmap);
+}
 
 void ScreenCap()
 {
 	HDC hScreen = GetDC(GetDesktopWindow());
-	//ScreenX = GetDeviceCaps(hScreen, HORZRES);
-	//ScreenY = GetDeviceCaps(hScreen, VERTRES);
 
 	HDC hdcMem = CreateCompatibleDC(hScreen);
 	HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, screenW, screenH);
@@ -347,13 +384,13 @@ void ScreenCap()
 	bmi.biWidth = screenW;
 	bmi.biHeight = -screenH;
 	bmi.biCompression = BI_RGB;
-	bmi.biSizeImage = 0;// 3 * ScreenX * ScreenY;
+	bmi.biSizeImage = 0;
 
 	if (ScreenData)
 		free(ScreenData);
-	ScreenData = (BYTE*)malloc(4 * screenW * screenH);
+	ScreenData = new ImageDataClass(4, screenW, screenH);//(BYTE*)malloc(4 * screenW * screenH);
 
-	GetDIBits(hdcMem, hBitmap, 0, screenH, ScreenData, (BITMAPINFO*)&bmi, DIB_RGB_COLORS);
+	GetDIBits(hdcMem, hBitmap, 0, screenH, ScreenData->getData(), (BITMAPINFO*)&bmi, DIB_RGB_COLORS);
 
 	ReleaseDC(GetDesktopWindow(), hScreen);
 	DeleteDC(hdcMem);
@@ -362,17 +399,17 @@ void ScreenCap()
 
 inline int PosB(int x, int y)
 {
-	return ScreenData[4 * ((y * screenW) + x)];
+	return ScreenData->getData()[4 * ((y * screenW) + x)];
 }
 
 inline int PosG(int x, int y)
 {
-	return ScreenData[4 * ((y * screenW) + x) + 1];
+	return ScreenData->getData()[4 * ((y * screenW) + x) + 1];
 }
 
 inline int PosR(int x, int y)
 {
-	return ScreenData[4 * ((y * screenW) + x) + 2];
+	return ScreenData->getData()[4 * ((y * screenW) + x) + 2];
 }
 
 bool ButtonPress(int Key)
@@ -385,137 +422,429 @@ bool ButtonPress(int Key)
 	return button_pressed;
 }
 
-int main()
+//int main()
+//{
+//	InitScreenResolutionInfo();
+//
+//	//ScrollBack();
+//
+//	bool first = true;
+//	ImageDataClass* IMDfirst = nullptr;
+//
+//	while (true)
+//	{
+//		if (ButtonPress(VK_SPACE))
+//		{
+//			// Print out current cursor position
+//			POINT p;
+//			GetCursorPos(&p);
+//			p.x *= 1.75;
+//			p.y *= 1.75;
+//			printf("X:%d Y:%d \n", p.x, p.y);
+//			// Print out RGB value at that position
+//			//std::cout << "Bitmap: r: " << PosR(p.x, p.y) << " g: " << PosG(p.x, p.y) << " b: " << PosB(p.x, p.y) << "\n";
+//			if (first)
+//			{
+//				GetScreenDataRegion(&IMDfirst, p.x, p.y, 10, 10);
+//				first = false;
+//			}
+//			else
+//			{
+//				ImageDataClass* temp = nullptr;
+//				GetScreenDataRegion(&temp, p.x, p.y, 10, 10);
+//
+//				std::cout << IMDfirst->compareWith(temp) << "\n";
+//				//std::cout << " r: " << (int)temp->getData()[2]
+//				//	<< " g: " << (int)temp->getData()[1]
+//				//	<< " b: " << (int)temp->getData()[0]
+//				//	<< "\n";
+//
+//				temp->~ImageDataClass();
+//			}
+//			
+//		}
+//		else if (ButtonPress(VK_ESCAPE))
+//		{
+//			printf("Quit\n");
+//			break;
+//		}
+//		else if (ButtonPress(VK_SHIFT))
+//		{
+//			ScreenCap();
+//			printf("Captured\n");
+//		}
+//	}
+//
+//	int count = 200;
+//	while (true)
+//	{
+//		//MouseMoveTo(2460, 1300);
+//		//MouseWheel(-250);
+//
+//		for (int i = 0; i < 20; i++)
+//		{
+//			MouseClick(2200, 900);
+//			Sleep(10);
+//			for (int j = 0; j < 3; j++)
+//			{
+//				MouseClick(2000, 900);
+//			}
+//			Sleep(150);
+//			///
+//			MouseClick(2200, 1200);
+//			Sleep(10);
+//			for (int j = 0; j < 3; j++)
+//			{
+//				MouseClick(2000, 1200);
+//			}
+//			Sleep(150);
+//			///
+//			MouseClick(2200, 1500);
+//			Sleep(10);
+//			for (int j = 0; j < 3; j++)
+//			{
+//				MouseClick(2000, 1500);
+//			}
+//			Sleep(150);
+//			///
+//
+//			MouseDragt(2030, 1500, 2030, 1170);
+//			Sleep(250);
+//		}
+//
+//		ScrollBack();
+//
+//		return 0;
+//	}
+//
+//	for (int i = 0; i < 500; i++)
+//	{
+//		MouseClick(3600, 1400);
+//	}
+//
+//	return 0;
+//
+//	HWND hwnd;
+//	HDC hdc[2];
+//	HBITMAP hbitmap;
+//
+//	hwnd = GetDesktopWindow();
+//	hdc[0] = GetWindowDC(hwnd);
+//
+//	hbitmap = CreateCompatibleBitmap(hdc[0], screenW, screenH);
+//	hdc[1] = CreateCompatibleDC(hdc[0]);
+//	SelectObject(hdc[1], hbitmap);
+//
+//	BitBlt(
+//		hdc[1],
+//		0,
+//		0,
+//		screenW,
+//		screenH,
+//		hdc[0],
+//		0,
+//		0,
+//		SRCCOPY
+//	);
+//
+//	CreateBMPFile(TEXT("D:\\bitmap.bmp"), hbitmap);
+//
+//	// get the device context of the screen
+//	HDC hScreenDC = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+//	// and a device context to put it in
+//	HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
+//
+//	int width = GetSystemMetrics(SM_CXSCREEN);
+//	int height = GetSystemMetrics(SM_CYSCREEN);
+//
+//	// maybe worth checking these are positive values
+//	HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, width, height);
+//
+//	// get a new bitmap
+//	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hMemoryDC, hBitmap);
+//
+//	BitBlt(hMemoryDC, 0, 0, width, height, hScreenDC, 0, 0, SRCCOPY);
+//	hBitmap = (HBITMAP)SelectObject(hMemoryDC, hOldBitmap);
+//
+//	// clean up
+//	DeleteDC(hMemoryDC);
+//	DeleteDC(hScreenDC);
+//
+//	// now your image is held in hBitmap. You can save it or do whatever with it
+//
+//	int temp = 0;
+//	std::cout << width << std::endl;
+//	std::cout << "Hello" << width + " x " + height << std::endl;
+//	std::cin >> temp;
+//}
+
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-	InitScreenResolutionInfo();
+	WNDCLASSEX wcex;
 
-	//ScrollBack();
+	wcex.cbSize = sizeof(WNDCLASSEX);
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = WndProc;
+	wcex.cbClsExtra = 0;
+	wcex.cbWndExtra = 0;
+	wcex.hInstance = hInstance;
+	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
+	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.lpszMenuName = NULL;
+	wcex.lpszClassName = szWindowClass;
+	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
 
-	while (true)
+	if (!RegisterClassEx(&wcex))
 	{
-		if (ButtonPress(VK_SPACE))
-		{
-			// Print out current cursor position
-			POINT p;
-			GetCursorPos(&p);
-			p.x *= 1.75;
-			p.y *= 1.75;
-			printf("X:%d Y:%d \n", p.x, p.y);
-			// Print out RGB value at that position
-			std::cout << "Bitmap: r: " << PosR(p.x, p.y) << " g: " << PosG(p.x, p.y) << " b: " << PosB(p.x, p.y) << "\n";
+		MessageBox(NULL, TEXT("Call to RegisterClassEx failed!"), TEXT("Win32 Guided Tour"), NULL);
+		return 1;
+	}
 
-		}
-		else if (ButtonPress(VK_ESCAPE))
+	hInst = hInstance;
+
+	main_hwnd = CreateWindow(
+		szWindowClass,
+		szTitle,
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		1280, 720,
+		NULL,
+		NULL,
+		hInstance,
+		NULL
+	);
+
+	if (!main_hwnd)
+	{
+		MessageBox(NULL, TEXT("Call to CreateWindow failed!"), TEXT("Win32 Guided Tour"), NULL);
+		return 1;
+	}
+	else
+	{
+		RECT rc;
+		GetClientRect(main_hwnd, &rc);
+
+		InitScreenResolutionInfo();
+
+		/*HWND hwnd;
+		HDC hdc[2];
+
+		hwnd = GetDesktopWindow();
+		hdc[0] = GetWindowDC(hwnd);
+
+		tempImgToDraw = CreateCompatibleBitmap(hdc[0], screenW, screenH);
+		hdc[1] = CreateCompatibleDC(hdc[0]);
+		SelectObject(hdc[1], tempImgToDraw);
+
+		BitBlt(
+			hdc[1],
+			0,
+			0,
+			screenW,
+			screenH,
+			hdc[0],
+			0,
+			0,
+			SRCCOPY
+		);*/
+
+		tempImgToDraw = (HBITMAP)LoadImage(hInst, L"D:\\1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+		InvalidateRect(main_hwnd, 0, TRUE);
+	}
+
+	ShowWindow(main_hwnd, nCmdShow);
+	UpdateWindow(main_hwnd);
+
+	// Main message loop:
+	MSG msg;
+
+	ZeroMemory(&msg, sizeof(MSG));
+	ShowCursor(true);
+
+	RECT rc;
+	GetClientRect(main_hwnd, &rc);
+
+	//rc.right - rc.left, rc.bottom - rc.top
+
+	while (msg.message != WM_QUIT)
+	{
+		if (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
 		{
-			printf("Quit\n");
-			break;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
 		}
-		else if (ButtonPress(VK_SHIFT))
+		else
 		{
-			ScreenCap();
-			printf("Captured\n");
+			
+			//
 		}
 	}
 
-	int count = 200;
-	while (true)
+	return (int)msg.wParam;
+}
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	PAINTSTRUCT ps;
+	HDC hdc;
+
+	switch (message)
 	{
-		//MouseMoveTo(2460, 1300);
-		//MouseWheel(-250);
+	case WM_PAINT:
+		PAINTSTRUCT     ps;
+		HDC             hdc;
+		BITMAP          bitmap;
+		HDC             hdcMem;
+		HGDIOBJ         oldBitmap;
 
-		for (int i = 0; i < 20; i++)
+		hdc = BeginPaint(hWnd, &ps);
+
+		//if (tempImgToDraw != NULL)
+		//{
+			hdcMem = CreateCompatibleDC(hdc);
+			oldBitmap = SelectObject(hdcMem, tempImgToDraw);
+
+			GetObject(tempImgToDraw, sizeof(bitmap), &bitmap);
+			
+			BitBlt(hdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+
+			SelectObject(hdcMem, oldBitmap);
+			DeleteDC(hdcMem);
+
+			MoveToEx(hdc, 0, 0, NULL);
+			LineTo(hdc, 50, 50);
+		//}
+
+		EndPaint(hWnd, &ps);
+		//InvalidateRect(main_hwnd, 0, TRUE);
+		
+		break;
+
+	case WM_KEYDOWN:
+	{
+		if (wParam == 0x1B/*VK_ESCAPE*/) PostQuitMessage(0);
+
+		if (wParam == 0x26/*VK_UP*/)
 		{
-			MouseClick(2200, 900);
-			Sleep(10);
-			for (int j = 0; j < 3; j++)
-			{
-				MouseClick(2000, 900);
-			}
-			Sleep(150);
-			///
-			MouseClick(2200, 1200);
-			Sleep(10);
-			for (int j = 0; j < 3; j++)
-			{
-				MouseClick(2000, 1200);
-			}
-			Sleep(150);
-			///
-			MouseClick(2200, 1500);
-			Sleep(10);
-			for (int j = 0; j < 3; j++)
-			{
-				MouseClick(2000, 1500);
-			}
-			Sleep(150);
-			///
-
-			MouseDragt(2030, 1500, 2030, 1170);
-			Sleep(250);
+			//camera->setKey(1);
+			//player->setKey(1);
 		}
 
-		ScrollBack();
+		if (wParam == 0x28/*VK_DOWN*/)
+		{
+			//camera->setKey(2);
+			//player->setKey(2);
+		}
 
-		return 0;
+		if (wParam == 37/*VK_LEFT*/)
+		{
+			//camera->setKey(3);
+			//player->setKey(3);
+		}
+
+		if (wParam == 39/*VK_RIGHT*/)
+		{
+			//camera->setKey(4);
+			//player->setKey(4);
+		}
+
+		if (wParam == VK_SPACE) {
+			/*HWND hwnd;
+			HDC hdc[2];
+			
+			hwnd = GetDesktopWindow();
+			hdc[0] = GetWindowDC(hwnd);
+			
+			tempImgToDraw = CreateCompatibleBitmap(hdc[0], screenW, screenH);
+			hdc[1] = CreateCompatibleDC(hdc[0]);
+			SelectObject(hdc[1], tempImgToDraw);
+			
+			BitBlt(
+				hdc[1],
+				0,
+				0,
+				screenW,
+				screenH,
+				hdc[0],
+				0,
+				0,
+				SRCCOPY
+			);
+
+			InvalidateRect(main_hwnd, 0, TRUE);*/
+		}
 	}
+	break;
 
-	for (int i = 0; i < 500; i++)
+	case WM_KEYUP:
 	{
-		MouseClick(3600, 1400);
+		//camera->setKey(0);
+		//player->setKey(0);
+	}
+	break;
+
+	case WM_MOUSEMOVE:
+	{
+		if (hWnd == GetActiveWindow()) {
+			int mouseX = GET_X_LPARAM(lParam);
+			int mouseY = GET_Y_LPARAM(lParam);
+			//POINT mouse;
+			//GetCursorPos(&mouse);
+
+			RECT rc, screen_wr;
+			GetClientRect(hWnd, &rc);
+			GetWindowRect(hWnd, &screen_wr);
+		}
+	}
+	break;
+
+	case WM_MOUSEWHEEL:
+	{
+		//camera->setMouseWheel(GET_Y_LPARAM(wParam));
+	}
+	break;
+
+	case WM_LBUTTONUP:
+	{
+		//camera->setMouseLeftButtonState(false);
+	}
+	break;
+
+	case WM_LBUTTONDOWN:
+	{
+		//camera->setMouseLeftButtonState(true);
+	}
+	break;
+
+	case WM_RBUTTONUP:
+	{
+		//camera->setMouseRightButtonState(false);
+	}
+	break;
+
+	case WM_RBUTTONDOWN:
+	{
+		//camera->setMouseRightButtonState(true);
+	}
+	break;
+
+	return DefWindowProc(hWnd, message, wParam, lParam);
+
+	break;
+
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		break;
+
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+		break;
+
 	}
 
 	return 0;
-
-	HWND hwnd;
-	HDC hdc[2];
-	HBITMAP hbitmap;
-
-	hwnd = GetDesktopWindow();
-	hdc[0] = GetWindowDC(hwnd);
-
-	hbitmap = CreateCompatibleBitmap(hdc[0], screenW, screenH);
-	hdc[1] = CreateCompatibleDC(hdc[0]);
-	SelectObject(hdc[1], hbitmap);
-
-	BitBlt(
-		hdc[1],
-		0,
-		0,
-		screenW,
-		screenH,
-		hdc[0],
-		0,
-		0,
-		SRCCOPY
-	);
-
-	CreateBMPFile(TEXT("D:\\bitmap.bmp"), hbitmap);
-
-	// get the device context of the screen
-	HDC hScreenDC = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
-	// and a device context to put it in
-	HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
-
-	int width = GetSystemMetrics(SM_CXSCREEN);
-	int height = GetSystemMetrics(SM_CYSCREEN);
-
-	// maybe worth checking these are positive values
-	HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, width, height);
-
-	// get a new bitmap
-	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hMemoryDC, hBitmap);
-
-	BitBlt(hMemoryDC, 0, 0, width, height, hScreenDC, 0, 0, SRCCOPY);
-	hBitmap = (HBITMAP)SelectObject(hMemoryDC, hOldBitmap);
-
-	// clean up
-	DeleteDC(hMemoryDC);
-	DeleteDC(hScreenDC);
-
-	// now your image is held in hBitmap. You can save it or do whatever with it
-
-	int temp = 0;
-	std::cout << width << std::endl;
-	std::cout << "Hello" << width + " x " + height << std::endl;
-	std::cin >> temp;
-}
+};
