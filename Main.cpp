@@ -4,12 +4,17 @@
 //#include <Windows.h>
 #include <cassert> // assert
 #include "ImageDataClass.h"
+#include "ExtendedBitMap.h"
+#include <string>
 
 HWND main_hwnd;
 HDC g_hDC;
 static TCHAR szWindowClass[] = TEXT("win32app");
 static TCHAR szTitle[] = TEXT("SimpleUniversalBot");
 HINSTANCE hInst;
+
+int mouseX = 0;
+int mouseY = 0;
 
 HBITMAP tempImgToDraw = NULL;
 
@@ -578,6 +583,45 @@ bool ButtonPress(int Key)
 //	std::cin >> temp;
 //}
 
+ExtendedBitMap* test = nullptr;
+ExtendedBitMap* test1 = nullptr;
+ExtendedBitMap* test2 = nullptr;
+int startX = 0;
+int startY = 580;
+void testFind()
+{
+	if (test2 != nullptr)
+	{
+		test2->~ExtendedBitMap();
+		test2 = nullptr;
+	}
+		
+	test2 = new ExtendedBitMap(false);
+	test2->captureScreen(0, 0, screenW, screenH);
+
+	//int result = test1->compareWithRegion(test2, 0, 0);
+
+	//std::wstring resultStr = std::to_wstring(result);
+	//MessageBox(main_hwnd, resultStr.c_str(), TEXT("result"), 0);
+	int maxResult = 0;
+	for (int i = 0; i < 1000; i++)
+	{
+		int result = test1->compareWithRegion(test2, startX, startY + i);
+		if (maxResult < result) maxResult = result;
+		//if (result > 50)
+		//{
+		//	std::wstring resultStr = std::to_wstring(result);
+
+		//	MouseClick(startX + 270, startY + i + 220);
+		//	//MessageBox(main_hwnd, resultStr.c_str(), TEXT("result"), 0);
+		//	break;
+		//}
+	}
+
+	std::wstring resultStr = std::to_wstring(maxResult);
+	MessageBox(main_hwnd, resultStr.c_str(), TEXT("result"), 0);
+} 
+
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -611,6 +655,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		1280, 720,
+		//1920, 1080,
 		NULL,
 		NULL,
 		hInstance,
@@ -628,6 +673,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		GetClientRect(main_hwnd, &rc);
 
 		InitScreenResolutionInfo();
+
+		HDC hScreen = GetDC(GetDesktopWindow());
+		HDC hdcMem = CreateCompatibleDC(hScreen);
+		tempImgToDraw = CreateCompatibleBitmap(hScreen, screenW, screenH);
+		HGDIOBJ hOld = SelectObject(hdcMem, tempImgToDraw);
+		BitBlt(hdcMem, 0, 0, screenW, screenH, hScreen, 0, 0, SRCCOPY);
+		SelectObject(hdcMem, hOld);
+
+		DeleteDC(hScreen);
+		DeleteDC(hdcMem);
 
 		/*HWND hwnd;
 		HDC hdc[2];
@@ -651,7 +706,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			SRCCOPY
 		);*/
 
-		tempImgToDraw = (HBITMAP)LoadImage(hInst, L"D:\\1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		//tempImgToDraw = (HBITMAP)LoadImage(hInst, L"D:\\1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		test = new ExtendedBitMap(true);
 
 		InvalidateRect(main_hwnd, 0, TRUE);
 	}
@@ -679,8 +735,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 		else
 		{
-			
-			//
+			Sleep(30);
+			POINT p;
+			GetCursorPos(&p);
+			if ((mouseX != int(p.x * 1.75)) || (mouseY != int(p.y * 1.75)))
+			{
+				/*screenW = 200;
+				screenH = 200;
+
+				HDC hScreen = GetDC(GetDesktopWindow());
+				HDC hdcMem = CreateCompatibleDC(hScreen);
+				tempImgToDraw = CreateCompatibleBitmap(hScreen, screenW, screenH);
+				HGDIOBJ hOld = SelectObject(hdcMem, tempImgToDraw);
+				BitBlt(hdcMem, 0, 0, screenW, screenH, hScreen, int(p.x * 1.75) - 100, int(p.y * 1.75) - 100, SRCCOPY);
+				SelectObject(hdcMem, hOld);
+
+				DeleteDC(hScreen);
+				DeleteDC(hdcMem);*/
+
+				mouseX = p.x * 1.75;
+				mouseY = p.y * 1.75;
+				//InvalidateRect(main_hwnd, 0, TRUE);
+			}
 		}
 	}
 
@@ -703,24 +779,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		hdc = BeginPaint(hWnd, &ps);
 
-		//if (tempImgToDraw != NULL)
-		//{
-			hdcMem = CreateCompatibleDC(hdc);
-			oldBitmap = SelectObject(hdcMem, tempImgToDraw);
+		//
+		//hdcMem = CreateCompatibleDC(hdc);
+		//oldBitmap = SelectObject(hdcMem, tempImgToDraw);
 
-			GetObject(tempImgToDraw, sizeof(bitmap), &bitmap);
-			
-			BitBlt(hdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
+		//GetObject(tempImgToDraw, sizeof(bitmap), &bitmap);
+		//	
+		//BitBlt(hdc, 10, 10, 200, 200, hdcMem, 0, 0, SRCCOPY); // mouseX - 200 / 2, mouseY - 200 / 2
 
-			SelectObject(hdcMem, oldBitmap);
-			DeleteDC(hdcMem);
+		//SelectObject(hdcMem, oldBitmap);
+		//DeleteDC(hdcMem);
+		//
 
-			MoveToEx(hdc, 0, 0, NULL);
-			LineTo(hdc, 50, 50);
-		//}
+		test->draw(hdc, 10, 10);
+		if (test1 != nullptr) test1->draw(hdc, 200, 10);
 
 		EndPaint(hWnd, &ps);
-		//InvalidateRect(main_hwnd, 0, TRUE);
 		
 		break;
 
@@ -753,6 +827,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 
 		if (wParam == VK_SPACE) {
+			if (test1 == nullptr)
+			{
+				test1 = new ExtendedBitMap(false);
+				test1->captureScreen(mouseX - 40, mouseY - 20, 120, 40);
+				startX = mouseX - 40;
+				//test->captureScreen(mouseX - 40, mouseY - 20, 80, 40);
+			}
+			else
+			{
+				//test1->captureScreen(mouseX - 40, mouseY - 20, 80, 40);
+				
+
+				testFind();
+				//int result = test1->compareWith(test);
+				//std::wstring resultStr = std::to_wstring(result);
+
+				//MessageBox(hWnd, resultStr.c_str(), TEXT("result"), 0);
+			}
+			
+			InvalidateRect(main_hwnd, 0, TRUE);
 			/*HWND hwnd;
 			HDC hdc[2];
 			
