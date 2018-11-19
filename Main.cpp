@@ -5,6 +5,7 @@
 #include <cassert> // assert
 #include "ImageDataClass.h"
 #include "ExtendedBitMap.h"
+#include "AutomationClasses.h"
 #include <string>
 
 HWND main_hwnd;
@@ -15,6 +16,8 @@ HINSTANCE hInst;
 
 int mouseX = 0;
 int mouseY = 0;
+
+float scale = 1.75;
 
 HBITMAP tempImgToDraw = NULL;
 
@@ -170,9 +173,9 @@ void InitScreenResolutionInfo()
 	GetClientRect(hwnd, &rect);
 
 	// my windows 175 % scaling
-	rect.right *= 1.75;
+	rect.right *= scale;
 	screenW = rect.right;
-	rect.bottom *= 1.75;
+	rect.bottom *= scale;
 	screenH = rect.bottom;
 }
 
@@ -334,7 +337,7 @@ void MouseWheel(int amountOfMovementUp)
 
 void ScrollBack()
 {
-	for (int i = 0; i < 15; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		MouseDragt(2030, 900, 2030, 1500);
 		Sleep(150);
@@ -585,10 +588,21 @@ bool ButtonPress(int Key)
 
 ExtendedBitMap* test = nullptr;
 ExtendedBitMap* test1 = nullptr;
+ExtendedBitMap* DjeiDi = nullptr;
+ExtendedBitMap* Gladiator = nullptr;
+ExtendedBitMap* Minigun = nullptr;
 ExtendedBitMap* test2 = nullptr;
+ExtendedBitMap* bestMach = nullptr;
+
+FindImageInRegion* imageOfCoin = nullptr;
+
 int startX = 0;
+int startXDjeiDi = 0;
+int startXGladiator = 0;
+int startXMinigun = 0;
+
 int startY = 580;
-void testFind()
+bool testFind(ExtendedBitMap* whatToFind, int* foundX, int* foundY, int mistakeScale)
 {
 	if (test2 != nullptr)
 	{
@@ -599,27 +613,63 @@ void testFind()
 	test2 = new ExtendedBitMap(false);
 	test2->captureScreen(0, 0, screenW, screenH);
 
+
 	//int result = test1->compareWithRegion(test2, 0, 0);
 
 	//std::wstring resultStr = std::to_wstring(result);
 	//MessageBox(main_hwnd, resultStr.c_str(), TEXT("result"), 0);
 	int maxResult = 0;
-	for (int i = 0; i < 1000; i++)
+	for (int i = 0; i < 800; i++)
 	{
-		int result = test1->compareWithRegion(test2, startX, startY + i);
-		if (maxResult < result) maxResult = result;
-		//if (result > 50)
-		//{
-		//	std::wstring resultStr = std::to_wstring(result);
+		if (test2->getHeight() <= startY + i + whatToFind->getHeight()) break;
+		//test
+		/*if (test2 != nullptr)
+		{
+			test2->~ExtendedBitMap();
+			test2 = nullptr;
+		}
+		test2 = new ExtendedBitMap(false);
+		test2->captureScreen(startX, startY + i, whatToFind->getWidth(), whatToFind->getHeight());
 
-		//	MouseClick(startX + 270, startY + i + 220);
-		//	//MessageBox(main_hwnd, resultStr.c_str(), TEXT("result"), 0);
-		//	break;
-		//}
+		int result = whatToFind->compareWith(test2);*/
+		//test
+		int result = whatToFind->compareWithRegion(test2, startX, startY + i);
+		/*if (maxResult < result)
+		{
+			if (bestMach != nullptr)
+			{
+				bestMach->~ExtendedBitMap();
+				bestMach = nullptr;
+			}
+			bestMach = new ExtendedBitMap(false);
+			bestMach->captureScreen(startX, startY + i, whatToFind->getWidth(), whatToFind->getHeight());
+			
+			*foundX = startX;
+			*foundY = startY + i;
+			maxResult = result;
+		}*/
+			
+		if (result > mistakeScale)
+		{
+			//std::wstring resultStr = std::to_wstring(result);
+
+			*foundX = startX;
+			*foundY = startY + i;
+
+			//MouseClick(startX + 270, startY + i + 220);
+			//MessageBox(main_hwnd, resultStr.c_str(), TEXT("result"), 0);
+			return true;
+		}
 	}
 
-	std::wstring resultStr = std::to_wstring(maxResult);
+	*foundX = -1;
+	*foundY = -1;
+
+	/*std::wstring resultStr = std::to_wstring(maxResult) + TEXT(" x : ") + std::to_wstring(*foundX) + TEXT(" y : ") + std::to_wstring(*foundY);
 	MessageBox(main_hwnd, resultStr.c_str(), TEXT("result"), 0);
+	InvalidateRect(main_hwnd, 0, TRUE);*/
+
+	return false;
 } 
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -674,6 +724,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		InitScreenResolutionInfo();
 
+		/*for (int i = 0; i < 100; i++)
+		{
+			MouseClick(2650, 1500);
+			Sleep(1100);
+		}
+
+		return 0;*/
+
 		HDC hScreen = GetDC(GetDesktopWindow());
 		HDC hdcMem = CreateCompatibleDC(hScreen);
 		tempImgToDraw = CreateCompatibleBitmap(hScreen, screenW, screenH);
@@ -684,32 +742,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		DeleteDC(hScreen);
 		DeleteDC(hdcMem);
 
-		/*HWND hwnd;
-		HDC hdc[2];
-
-		hwnd = GetDesktopWindow();
-		hdc[0] = GetWindowDC(hwnd);
-
-		tempImgToDraw = CreateCompatibleBitmap(hdc[0], screenW, screenH);
-		hdc[1] = CreateCompatibleDC(hdc[0]);
-		SelectObject(hdc[1], tempImgToDraw);
-
-		BitBlt(
-			hdc[1],
-			0,
-			0,
-			screenW,
-			screenH,
-			hdc[0],
-			0,
-			0,
-			SRCCOPY
-		);*/
-
 		//tempImgToDraw = (HBITMAP)LoadImage(hInst, L"D:\\1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		test = new ExtendedBitMap(true);
 
 		InvalidateRect(main_hwnd, 0, TRUE);
+		//MouseDragt(2030, 1500, 2030, 1140);
 	}
 
 	ShowWindow(main_hwnd, nCmdShow);
@@ -725,6 +762,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	GetClientRect(main_hwnd, &rc);
 
 	//rc.right - rc.left, rc.bottom - rc.top
+	int stage = 0;
 
 	while (msg.message != WM_QUIT)
 	{
@@ -738,7 +776,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			Sleep(30);
 			POINT p;
 			GetCursorPos(&p);
-			if ((mouseX != int(p.x * 1.75)) || (mouseY != int(p.y * 1.75)))
+			if ((mouseX != int(p.x * scale)) || (mouseY != int(p.y * scale)))
 			{
 				/*screenW = 200;
 				screenH = 200;
@@ -753,9 +791,111 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				DeleteDC(hScreen);
 				DeleteDC(hdcMem);*/
 
-				mouseX = p.x * 1.75;
-				mouseY = p.y * 1.75;
+				mouseX = p.x * scale;
+				mouseY = p.y * scale;
 				//InvalidateRect(main_hwnd, 0, TRUE);
+			}
+
+			if (DjeiDi != nullptr && Gladiator != nullptr && Minigun != nullptr)
+			{
+				/*int startX = 0;
+				int startXDjeiDi = 0;
+				int startXGladiator = 0;
+				int startXMinigun = 0;*/
+				int foundX = 0;
+				int foundY = 0;
+				startY = 580;
+
+				switch (stage)
+				{
+					case 0 :
+					{
+						ScrollBack();
+						stage = 1;
+					}
+					break;
+
+					case 1:
+					{
+						startX = startXDjeiDi;
+						if (testFind(DjeiDi, &foundX, &foundY, 70))
+						{
+							startY = foundY + 30;
+							startX = imageOfCoin->getStartX();
+							if (testFind(imageOfCoin->getImage(), &foundX, &foundY, 50))
+							{
+								MouseClick(foundX + 270, foundY + 10);
+								stage = 2;
+							}
+							else
+							{
+								MouseDragt(2030, 1500, 2030, 1100);
+								Sleep(150);
+							}
+						}
+						else
+						{
+							MouseDragt(2030, 1500, 2030, 1100);
+							Sleep(150);
+						}
+					}
+					break;
+					case 2:
+					{
+						startX = startXGladiator;
+						if (testFind(Gladiator, &foundX, &foundY, 70))
+						{
+							startY = foundY + 30;
+							startX = imageOfCoin->getStartX();
+							if (testFind(imageOfCoin->getImage(), &foundX, &foundY, 50))
+							{
+								MouseClick(foundX + 270, foundY + 10);
+								stage = 3;
+							}
+							else
+							{
+								MouseDragt(2030, 1500, 2030, 1100);
+								Sleep(150);
+							}
+						}
+						else
+						{
+							MouseDragt(2030, 1500, 2030, 1100);
+							Sleep(150);
+						}
+					}
+					break;
+
+					case 3:
+					{
+						startX = startXMinigun;
+						if (testFind(Minigun, &foundX, &foundY, 70))
+						{
+							startY = foundY + 30;
+							startX = imageOfCoin->getStartX();
+							if (testFind(imageOfCoin->getImage(), &foundX, &foundY, 50))
+							{
+								MouseClick(foundX + 270, foundY + 10);
+								stage = 0;
+							}
+							else
+							{
+								MouseDragt(2030, 1500, 2030, 1100);
+								Sleep(150);
+							}
+						}
+						else
+						{
+							MouseDragt(2030, 1500, 2030, 1100);
+							Sleep(150);
+						}
+					}
+					break;
+
+					default:
+						break;
+				}
+				
 			}
 		}
 	}
@@ -791,8 +931,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//DeleteDC(hdcMem);
 		//
 
-		test->draw(hdc, 10, 10);
-		if (test1 != nullptr) test1->draw(hdc, 200, 10);
+		//test->draw(hdc, 10, 10);
+		/*if (test1 != nullptr)
+		{
+			test1->draw(hdc, 200, 10);
+		}*/
+
+		if (bestMach != nullptr)
+		{
+			bestMach->draw(hdc, 400, 10);
+		}
+
+		if (imageOfCoin != nullptr)
+		{
+			imageOfCoin->getImage()->draw(hdc, 100, 10);
+		}
+		
+
+		/*if (test2 != nullptr)
+		{
+			test2->draw(hdc, -1500, -500);
+		}*/
 
 		EndPaint(hWnd, &ps);
 		
@@ -827,57 +986,55 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 
 		if (wParam == VK_SPACE) {
-			if (test1 == nullptr)
+			//int foundX = 0;
+			//int foundY = 0;
+
+			if (imageOfCoin == nullptr)
+			{
+				imageOfCoin = new FindImageInRegion(mouseX - 20, mouseY - 30, 40, 60);
+			}
+
+			//startX = imageOfCoin->getStartX();
+			//testFind(imageOfCoin->getImage(), &foundX, &foundY, 40);
+			else if (DjeiDi == nullptr)
+			{
+				DjeiDi = new ExtendedBitMap(false);
+				DjeiDi->captureScreen(mouseX - 40, mouseY - 20, 120, 40);
+				startXDjeiDi = mouseX - 40;
+			}
+			else if (Gladiator == nullptr)
+			{
+				Gladiator = new ExtendedBitMap(false);
+				Gladiator->captureScreen(mouseX - 40, mouseY - 20, 120, 40);
+				startXGladiator = mouseX - 40;
+			}
+			else if (Minigun == nullptr)
+			{
+				Minigun = new ExtendedBitMap(false);
+				Minigun->captureScreen(mouseX - 40, mouseY - 20, 120, 40);
+				startXMinigun = mouseX - 40;
+			}
+
+
+			/*if (test1 == nullptr)
 			{
 				test1 = new ExtendedBitMap(false);
 				test1->captureScreen(mouseX - 40, mouseY - 20, 120, 40);
 				startX = mouseX - 40;
-				//test->captureScreen(mouseX - 40, mouseY - 20, 80, 40);
 			}
 			else
 			{
-				//test1->captureScreen(mouseX - 40, mouseY - 20, 80, 40);
-				
-
-				testFind();
-				//int result = test1->compareWith(test);
-				//std::wstring resultStr = std::to_wstring(result);
-
-				//MessageBox(hWnd, resultStr.c_str(), TEXT("result"), 0);
-			}
+				testFind(test1);
+			}*/
 			
 			InvalidateRect(main_hwnd, 0, TRUE);
-			/*HWND hwnd;
-			HDC hdc[2];
-			
-			hwnd = GetDesktopWindow();
-			hdc[0] = GetWindowDC(hwnd);
-			
-			tempImgToDraw = CreateCompatibleBitmap(hdc[0], screenW, screenH);
-			hdc[1] = CreateCompatibleDC(hdc[0]);
-			SelectObject(hdc[1], tempImgToDraw);
-			
-			BitBlt(
-				hdc[1],
-				0,
-				0,
-				screenW,
-				screenH,
-				hdc[0],
-				0,
-				0,
-				SRCCOPY
-			);
-
-			InvalidateRect(main_hwnd, 0, TRUE);*/
 		}
 	}
 	break;
 
 	case WM_KEYUP:
 	{
-		//camera->setKey(0);
-		//player->setKey(0);
+		//
 	}
 	break;
 

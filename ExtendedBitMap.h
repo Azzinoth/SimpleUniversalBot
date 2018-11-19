@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+#include <cstdlib>
 
 class ExtendedBitMap
 {
@@ -162,10 +163,14 @@ public:
 		int count = 0;
 		for (int i = 0; i < dataLength; i += 4)
 		{
-			if ((otherImage->getData()[i] == this->getData()[i]) &&
+			if (abs((otherImage->getData()[i] - this->getData()[i]) < 20) &&
+				abs((otherImage->getData()[i + 1] - this->getData()[i + 1]) < 20) &&
+				abs((otherImage->getData()[i + 2] - this->getData()[i + 2])) < 20)
+				count++;
+			/*if ((otherImage->getData()[i] == this->getData()[i]) &&
 				(otherImage->getData()[i + 1] == this->getData()[i + 1]) &&
 				(otherImage->getData()[i + 2] == this->getData()[i + 2]))
-				count++;
+				count++;*/
 		}
 
 		return float(count) / float(dataLength / 4) * 100;
@@ -206,10 +211,15 @@ public:
 				biggerImageIndex = 4 * ((j * biggerImage->getWidth()) + i);
 				smallerImageIndex = 4 * (((j - beginY) * smallerImage->getWidth()) + (i - beginX));
 
-				if ((biggerImage->getData()[biggerImageIndex] == smallerImage->getData()[smallerImageIndex]) &&
+				if (abs((otherImage->getData()[biggerImageIndex] - this->getData()[smallerImageIndex]) < 20) &&
+					abs((otherImage->getData()[biggerImageIndex + 1] - this->getData()[smallerImageIndex + 1]) < 20) &&
+					abs((otherImage->getData()[biggerImageIndex + 2] - this->getData()[smallerImageIndex + 2])) < 20)
+					count++;
+
+				/*if ((biggerImage->getData()[biggerImageIndex] == smallerImage->getData()[smallerImageIndex]) &&
 					(biggerImage->getData()[biggerImageIndex + 1] == smallerImage->getData()[smallerImageIndex + 1]) &&
 					(biggerImage->getData()[biggerImageIndex + 2] == smallerImage->getData()[smallerImageIndex + 2]))
-					count++;
+					count++;*/
 			}
 		}
 
